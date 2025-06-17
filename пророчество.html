@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Пророчество</title>
+  <style>
+    body {
+      font-family: "Georgia", serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #controls {
+      margin-bottom: 20px;
+    }
+
+    .block {
+      border: 1px solid #ccc;
+      background: white;
+      padding: 10px;
+      margin-bottom: 10px;
+      cursor: move;
+      white-space: pre-wrap;
+    }
+
+    .comment {
+      font-style: italic;
+      color: #555;
+      margin-top: 5px;
+    }
+
+    form {
+      margin-top: 20px;
+    }
+
+    textarea, input {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 5px 10px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Пророчество</h1>
+
+  <div id="controls">
+    <label for="commentFilter">Сортировать по близости к комментарию:</label>
+    <select id="commentFilter">
+      <option value="">— Не сортировать —</option>
+    </select>
+    <button onclick="sortByComment()">Сортировать</button>
+    <button onclick="saveAsImage()">Сохранить как .jpg</button>
+  </div>
+
+  <div id="container"></div>
+
+  <form onsubmit="addBlock(event)">
+    <h3>Добавить новый блок</h3>
+    <textarea id="newText" placeholder="Текст блока" required></textarea>
+    <input type="text" id="newComment" placeholder="Комментарий" required />
+    <button type="submit">Добавить</button>
+  </form>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    const blocks = [
+      {
+        text: `Остановилась стрелка на часах, 
+Из жутких ледяных покоев,
+Навстречу нам теперь летит она,
+Завидев тень и воинство святое.`,
+        comment: "получено в доме Сивис"
+      },
+      {
+        text: `Почти угас король, отметив важный день,
+И стал подобен царству своему. 
+В его дворец давно проникла тень,
+Принесшая убийственную тьму.`,
+        comment: "Часть пророчества из меча"
+      },
+      { text: `И лишь тому, кто путь пройдёт достойно`, comment: "от Элариона" },
+      { text: `Король падёт и мир рассыплется, как лёд`, comment: "от Анжелло" },
+      {
+        text: `Там встанет перед ней бесплотный прах —
+И скажет имя, что забыли мы`,
+        comment: "от Химо"
+      },
+      {
+        text: `Она пройдёт над скорбною землей, 
+где голос памяти звучит, как стон`,
+        comment: "от 13-го"
+      },
+      {
+        text: `Звезда придет, очертит в небе круг, 
+Свои знамена созывая`,
+        comment: "от 13-го"
+      },
+      {
+        text: `Где купол звезд среди промерзлых скал
+Открыл уже давно свои секреты,
+Холодный цвет безумья замерцал,
+А руки к небу их давно воздеты.`,
+        comment: "получено после битвы с кристаллом"
+      },
+      {
+        text: `Всё было слито в празднике одном —
+хоть и ему не избежать заката. 
+Ведь разломилось время, грянул гром,
+Король уснул, а брат пошел на брата.`,
+        comment: "часть пророчества, найденная у безумного мага"
+      },
+      {
+        text: `Теперь пришел несбывшихся черед, 
+И пусто стало в королевской зале`,
+        comment: "от Брейтена"
+      },
+      {
+        text: `Две стрелки из безвременья покойника`,
+        comment: "от Брейтена"
+      },
+      {
+        text: `Ведь разломилось время, грянул гром`,
+        comment: "от Брейтена"
+      },
+    ];
+
+    const container = document.getElementById("container");
+    const commentFilter = document.getElementById("commentFilter");
+
+    function renderBlocks() {
+      container.innerHTML = "";
+      blocks.forEach((block, i) => {
+        const div = document.createElement("div");
+        div.className = "block";
+        div.draggable = true;
+        div.dataset.index = i;
+
+        div.ondragstart = e => {
+          e.dataTransfer.setData("text/plain", i);
+        };
+
+        div.ondragover = e => e.preventDefault();
+
+        div.ondrop = e => {
+          e.preventDefault();
+          const fromIndex = +e.dataTransfer.getData("text/plain");
+          const toIndex = +div.dataset.index;
+          const moved = blocks.splice(fromIndex, 1)[0];
+          blocks.splice(toIndex, 0, moved);
+          renderBlocks();
+        };
+
+        div.innerHTML = `<div>${block.text}</div><div class="comment">${block.comment}</div>`;
+        container.appendChild(div);
+      });
+
+      // Обновляем список уникальных комментариев
+      const uniqueComments = [...new Set(blocks.map(b => b.comment))];
+      commentFilter.innerHTML = `<option value="">— Не сортировать —</option>` +
+        uniqueComments.map(c => `<option value="${c}">${c}</option>`).join("");
+    }
+
+    function addBlock(e) {
+      e.preventDefault();
+      const text = document.getElementById("newText").value;
+      const comment = document.getElementById("newComment").value;
+      blocks.push({ text, comment });
+      document.getElementById("newText").value = "";
+      document.getElementById("newComment").value = "";
+      renderBlocks();
+    }
+
+    function levenshtein(a, b) {
+      const an = a.length, bn = b.length;
+      if (an === 0) return bn;
+      if (bn === 0) return an;
+      const matrix = [];
+      for (let i = 0; i <= bn; i++) {
+        matrix[i] = [i];
+      }
+      for (let j = 0; j <= an; j++) {
+        matrix[0][j] = j;
+      }
+      for (let i = 1; i <= bn; i++) {
+        for (let j = 1; j <= an; j++) {
+          if (b.charAt(i - 1) === a.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
+          }
+        }
+      }
+      return matrix[bn][an];
+    }
+
+    function sortByComment() {
+      const target = commentFilter.value.trim();
+      if (!target) return;
+      blocks.sort((a, b) =>
+        levenshtein(a.comment, target) - levenshtein(b.comment, target)
+      );
+      renderBlocks();
+    }
+
+    function saveAsImage() {
+      html2canvas(container).then(canvas => {
+        const link = document.createElement("a");
+        link.download = "prorochestvo.jpg";
+        link.href = canvas.toDataURL("image/jpeg");
+        link.click();
+      });
+    }
+
+    renderBlocks();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+      
